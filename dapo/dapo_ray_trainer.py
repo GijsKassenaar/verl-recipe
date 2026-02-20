@@ -277,10 +277,20 @@ class RayDAPOTrainer(RayPPOTrainer):
                                 is_last_step = self.global_steps >= self.total_training_steps
                                 continue
                             else:
-                                raise ValueError(
-                                    f"{num_gen_batches=} >= {max_num_gen_batches=}."
-                                    + " Generated too many. Please check if your data are too difficult."
-                                    + " You could also try set max_num_gen_batches=0 to enable endless trials."
+                                if batch is None or num_prompt_in_batch <= 0:
+                                    raise ValueError(
+                                        f"{num_gen_batches=} >= {max_num_gen_batches=}."
+                                        + " Generated too many and no qualified groups were collected."
+                                        + " Please check if your data are too difficult or set"
+                                        + " max_num_gen_batches=0 to enable endless trials."
+                                    )
+
+                                traj_bsz = num_prompt_in_batch * self.config.actor_rollout_ref.rollout.n
+                                batch = batch[:traj_bsz]
+                                print(
+                                    f"Reached max generation rounds ({num_gen_batches=}, {max_num_gen_batches=}); "
+                                    + f"continuing with partial filtered batch: {num_prompt_in_batch} prompts "
+                                    + f"({traj_bsz} trajectories)."
                                 )
                         else:
                             # Align the batch
