@@ -399,7 +399,17 @@ class RayDAPOTrainer(RayPPOTrainer):
                 metrics.update(compute_throughout_metrics(batch=batch, timing_raw=timing_raw, n_gpus=n_gpus))
                 timing_raw = defaultdict(float)  # clear timing
 
+                actual_traj_batch_size = len(batch)
+                actual_prompt_batch_size = actual_traj_batch_size // self.config.actor_rollout_ref.rollout.n
+                metrics["train/dynamic_traj_batch_size"] = actual_traj_batch_size
+                metrics["train/dynamic_prompt_batch_size"] = actual_prompt_batch_size
                 metrics["train/num_gen_batches"] = num_gen_batches
+
+                if "overlong" in batch.non_tensor_batch:
+                    overlong_flags = np.asarray(batch.non_tensor_batch["overlong"]).astype(bool)
+                    metrics["reward/overlong_count"] = int(overlong_flags.sum())
+                    metrics["reward/overlong_ratio"] = float(overlong_flags.mean())
+
                 batch = None
                 num_prompt_in_batch = 0
                 num_gen_batches = 0
